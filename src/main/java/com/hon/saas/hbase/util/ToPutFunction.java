@@ -69,7 +69,7 @@ public class ToPutFunction implements Function<SinkRecord, Put> {
             System.out.println(e.getKey() + "  value ---   " + Bytes.toString(e.getValue()));
         });
 
-        if (valuesMap.isEmpty() || keysMap.isEmpty()) {
+        if (valuesMap.isEmpty() && keysMap.isEmpty()) {
             System.out.println("can't cons a Put");
             return null;
         }

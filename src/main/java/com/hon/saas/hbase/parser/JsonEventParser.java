@@ -90,17 +90,18 @@ public class JsonEventParser implements EventParser {
             } else {
                 valueBytes = valueConverter.fromConnectData(topic, schema, value);
             }
-            if(valueBytes == null || valueBytes.length == 0) {
+            if(value == null || valueBytes == null || valueBytes.length == 0) {
                 return Collections.emptyMap();
             }
 
             final JsonNode valueNode = JSON_READER.readValue(valueBytes);
             final Map<String, Object> keyValues = OBJECT_MAPPER.convertValue(valueNode,
               new TypeReference<Map<String, Object>>() {});
+            final Map<String, Object> payload = (Map<String, Object>)keyValues.get("payload");
 
             final List<Field> fields = schema.fields();
             for(Field field : fields) {
-                final byte[] fieldValue = toValue(keyValues, field);
+                final byte[] fieldValue = toValue(payload, field);
                 if(fieldValue == null) {
                     continue;
                 }
