@@ -6,13 +6,13 @@
 
     <groupId>com.hon.saas</groupId>
     <artifactId>debezium-hbase-sink</artifactId>
-    <version>0.1</version>
+    <version>0.0.1</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hbase.version>1.2.4</hbase.version>
         <hadoop.version>2.7.3</hadoop.version>
-        <kafka.version>0.10.2.0</kafka.version>
+        <kafka.version>0.10.0.0-cp1</kafka.version>
         <junit.version>4.11</junit.version>
         <hadoop.mvn.version>2.7.3</hadoop.mvn.version>
         <guava.version>16.0</guava.version>
@@ -161,7 +161,7 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>2.3</version>
                 <configuration>
-                    <finalName>hbase-sink</finalName>
+                    <finalName>debezium-hbase-sink-${project.version}</finalName>
                     <createDependencyReducedPom>true</createDependencyReducedPom>
                     <filters>
                         <filter>

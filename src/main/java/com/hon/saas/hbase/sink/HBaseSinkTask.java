@@ -28,6 +28,7 @@ import com.hon.saas.hbase.HBaseConnectionFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -72,7 +73,7 @@ public class HBaseSinkTask extends SinkTask {
         Map<String, List<SinkRecord>> byTopic =  records.stream()
           .collect(groupingBy(SinkRecord::topic));
 
-        Map<String, List<Put>> byTable = byTopic.entrySet().stream()
+        Map<String, List<? extends Mutation>> byTable = byTopic.entrySet().stream()
           .collect(toMap(Map.Entry::getKey,
                          (e) -> e.getValue().stream().map(sr -> toPutFunction.apply(sr))
                                  .filter(Objects::nonNull).collect(toList())));

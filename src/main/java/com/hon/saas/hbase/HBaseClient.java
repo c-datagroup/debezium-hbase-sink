@@ -22,25 +22,29 @@ import com.hon.saas.hbase.sink.SinkConnectorException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.BufferedMutator;
 import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
 public final class HBaseClient {
-
+    private static Logger logger= LoggerFactory.getLogger(HBaseClient.class);
     private final HBaseConnectionFactory connectionFactory;
 
     public HBaseClient(final HBaseConnectionFactory connectionFactory) {
         this.connectionFactory = connectionFactory;
     }
 
-    public void write(final String tableName, final List<Put> puts) {
+    public void write(final String tableName, final List<? extends Mutation> puts) {
         Preconditions.checkNotNull(tableName);
         Preconditions.checkNotNull(puts);
         final TableName table = TableName.valueOf(tableName);
         write(table, puts);
     }
 
-    public void write(final TableName table, final List<Put> puts) {
+    public void write(final TableName table, final List<? extends Mutation> puts) {
         Preconditions.checkNotNull(table);
         Preconditions.checkNotNull(puts);
         try(final Connection connection = this.connectionFactory.getConnection();
@@ -50,6 +54,7 @@ public final class HBaseClient {
         } catch(Exception ex) {
             final String errorMsg = String.format("Failed with a [%s] when writing to table [%s] ", ex.getMessage(),
               table.getNameAsString());
+            logger.error(errorMsg);
             throw new SinkConnectorException(errorMsg, ex);
         }
     }

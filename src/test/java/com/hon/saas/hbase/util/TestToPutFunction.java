@@ -58,7 +58,7 @@ public class TestToPutFunction {
           .put("status", true);
 
         final SinkRecord sinkRecord = new SinkRecord("test", 0, null, null, schema, record, 0);
-        final Put put =  toPutFunction.apply(sinkRecord);
+        final Put put =  (Put)toPutFunction.apply(sinkRecord);
         Assert.assertEquals(123456, Bytes.toInt(put.getRow()));
     }
 }

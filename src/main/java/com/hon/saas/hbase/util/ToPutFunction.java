@@ -23,19 +23,31 @@ import com.google.common.base.Preconditions;
 import com.hon.saas.hbase.config.HBaseSinkConfig;
 import com.hon.saas.hbase.parser.EventParser;
 
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 import java.util.Map;
 
 
 /**
  * @author ravi.magham
  */
-public class ToPutFunction implements Function<SinkRecord, Put> {
+public class ToPutFunction implements Function<SinkRecord, Mutation> {
+
+    private static Logger logger = LoggerFactory.getLogger(ToPutFunction.class);
 
     private final HBaseSinkConfig sinkConfig;
     private final EventParser eventParser;
+    private final String OPERATION = "op";
+    private final byte[] UPDATE_OPERATION = "u".getBytes();
+    private final byte[] CREATE_OPERATION = "c".getBytes();
+    private final byte[] DELETE_OPERATION = "d".getBytes();
 
     public ToPutFunction(HBaseSinkConfig sinkConfig) {
         this.sinkConfig = sinkConfig;
@@ -51,7 +63,7 @@ public class ToPutFunction implements Function<SinkRecord, Put> {
      * @return
      */
     @Override
-    public Put apply(final SinkRecord sinkRecord) {
+    public Mutation apply(final SinkRecord sinkRecord) {
         Preconditions.checkNotNull(sinkRecord);
         System.out.println(sinkRecord);
         final String table = sinkRecord.topic();
@@ -60,30 +72,36 @@ public class ToPutFunction implements Function<SinkRecord, Put> {
 
         final Map<String, byte[]> valuesMap  = this.eventParser.parseValue(sinkRecord);
         final Map<String, byte[]> keysMap = this.eventParser.parseKey(sinkRecord);
+        byte[] rawOperation = valuesMap.remove(OPERATION);
 
-        keysMap.entrySet().forEach(e -> {
-            System.out.println(e.getKey() + "  key ---   " + Bytes.toString(e.getValue()));
-        });
-
-        valuesMap.entrySet().forEach(e -> {
-            System.out.println(e.getKey() + "  value ---   " + Bytes.toString(e.getValue()));
-        });
-
-        if (valuesMap.isEmpty() && keysMap.isEmpty()) {
-            System.out.println("can't cons a Put");
+        if (rawOperation == null || (valuesMap.isEmpty() && keysMap.isEmpty())) {
+            logger.error("can't cons a Put");
             return null;
         }
+        else{
+            logger.debug(String.format("Found a sinkRecord with {} keys and {} values", keysMap.size(), valuesMap.size()));
+        }
+
         valuesMap.putAll(keysMap);
         final String[] rowkeyColumns = rowkeyColumns(table);
         final byte[] rowkey = toRowKey(valuesMap, rowkeyColumns, delimiter);
 
-        final Put put = new Put(rowkey);
-        valuesMap.entrySet().forEach(entry -> {
-            final String qualifier = entry.getKey();
-            final byte[] value = entry.getValue();
-            put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(qualifier), value);
-        });
-        return put;
+        if(Arrays.equals(rawOperation, UPDATE_OPERATION) || Arrays.equals(rawOperation, CREATE_OPERATION)) {
+            final Put put = new Put(rowkey);
+            valuesMap.entrySet().forEach(entry -> {
+                final String qualifier = entry.getKey();
+                final byte[] value = entry.getValue();
+                put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(qualifier), value);
+            });
+            logger.debug("Found an Update or Create on key: " + new String(rowkey) );
+            return put;
+        }
+        else if(Arrays.equals(rawOperation, DELETE_OPERATION)){
+            final Delete delete = new Delete(rowkey);
+            logger.debug("Found a Delete on key: " + new String(rowkey) );
+            return delete;
+        }
+        return null;
     }
 
     /**
