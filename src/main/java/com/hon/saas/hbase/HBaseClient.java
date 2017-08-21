@@ -58,4 +58,8 @@ public final class HBaseClient {
             throw new SinkConnectorException(errorMsg, ex);
         }
     }
+
+    public HBaseConnectionFactory getConnectionFactory(){
+        return connectionFactory;
+    }
 }

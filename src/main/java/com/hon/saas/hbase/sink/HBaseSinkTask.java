@@ -26,15 +26,20 @@ import com.hon.saas.hbase.config.HBaseSinkConfig;
 import com.hon.saas.hbase.util.ToPutFunction;
 import com.hon.saas.hbase.HBaseConnectionFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +51,7 @@ import java.util.Objects;
  */
 public class HBaseSinkTask extends SinkTask {
 
+    private static Logger logger = LoggerFactory.getLogger(HBaseSinkTask.class);
     private ToPutFunction toPutFunction;
     private HBaseClient hBaseClient;
 
@@ -55,7 +61,7 @@ public class HBaseSinkTask extends SinkTask {
     }
 
     @Override
-    public void start(Map<String, String> props) {
+    public void start(Map<String, String> props)  {
         final HBaseSinkConfig sinkConfig = new HBaseSinkConfig(props);
         sinkConfig.validate(); // we need to do some sanity checks of the properties we configure.
 
@@ -66,6 +72,8 @@ public class HBaseSinkTask extends SinkTask {
         final HBaseConnectionFactory connectionFactory = new HBaseConnectionFactory(configuration);
         this.hBaseClient = new HBaseClient(connectionFactory);
         this.toPutFunction = new ToPutFunction(sinkConfig);
+
+        this.createHBaseTable(sinkConfig);
     }
 
     @Override
@@ -82,6 +90,33 @@ public class HBaseSinkTask extends SinkTask {
                 .forEach(entry -> {
                     hBaseClient.write(entry.getKey(), entry.getValue());
                 });
+    }
+
+    public void createHBaseTable(HBaseSinkConfig configuration){
+        final String topicsAsStr = configuration.getPropertyValue(TOPICS_CONFIG);
+        final String[] topics = topicsAsStr.split(",");
+
+        try {
+            Connection connection = hBaseClient.getConnectionFactory().getConnection();
+            HBaseAdmin hbaseAdmin = (HBaseAdmin)connection.getAdmin();
+
+            for (String topic : topics) {
+                String columnFamily = this.toPutFunction.columnFamily(topic);
+                TableName tableName = TableName.valueOf(topic);
+                HTableDescriptor hTableDescriptor = new HTableDescriptor(tableName);
+                hTableDescriptor.addFamily(new HColumnDescriptor(columnFamily));
+
+                if (!hbaseAdmin.tableExists(tableName)) {
+                    hbaseAdmin.createTable(hTableDescriptor);
+                    logger.info(String.format("Create HBase table: {%s}", topic));
+                }
+            }
+
+            hbaseAdmin.close();
+        }
+        catch(Exception exp){
+            throw new ConfigException("failed to connect to HBase", exp);
+        }
     }
 
     @Override

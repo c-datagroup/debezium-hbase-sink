@@ -79,7 +79,7 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
             return null;
         }
         else{
-            logger.debug(String.format("Found a sinkRecord with {} keys and {} values", keysMap.size(), valuesMap.size()));
+            logger.debug(String.format("Found a sinkRecord with %d keys and %d values", keysMap.size(), valuesMap.size()));
         }
 
         valuesMap.putAll(keysMap);
@@ -133,7 +133,7 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
      * @param table hbase table.
      * @return
      */
-    private String columnFamily(final String table) {
+    public String columnFamily(final String table) {
         final String entry = String.format(HBaseSinkConfig.TABLE_COLUMN_FAMILY_TEMPLATE, table);
         final String entryValue = sinkConfig.getPropertyValue(entry, HBaseSinkConfig.DEFAULT_HBASE_COLUMN_FAMILY);
         return entryValue;
