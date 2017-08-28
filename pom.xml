@@ -29,6 +29,10 @@
             <id>cloudera</id>
             <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
         </repository>
+        <repository>
+            <id>csdn</id>
+            <url>http://maven.csdn.net:8081/nexus/content/repositories/releases/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -37,6 +41,11 @@
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.csdn</groupId>
+            <artifactId>hbase-rowkey</artifactId>
+            <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>

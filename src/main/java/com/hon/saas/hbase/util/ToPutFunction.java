@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import com.hon.saas.hbase.config.HBaseSinkConfig;
 import com.hon.saas.hbase.parser.EventParser;
 
+import net.csdn.hbase.HBaseRowkeyGenerator;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Delete;
@@ -77,17 +78,17 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
         if (rawOperation == null || (valuesMap.isEmpty() && keysMap.isEmpty())) {
             logger.error("can't cons a Put");
             return null;
-        }
+        } 
         else{
             logger.debug(String.format("Found a sinkRecord with %d keys and %d values", keysMap.size(), valuesMap.size()));
         }
 
         valuesMap.putAll(keysMap);
         final String[] rowkeyColumns = rowkeyColumns(table);
-        final byte[] rowkey = toRowKey(valuesMap, rowkeyColumns, delimiter);
+        final String rowkey = toRowKey(table, valuesMap, rowkeyColumns, delimiter);
 
         if(Arrays.equals(rawOperation, UPDATE_OPERATION) || Arrays.equals(rawOperation, CREATE_OPERATION)) {
-            final Put put = new Put(rowkey);
+            final Put put = new Put(rowkey.getBytes());
             valuesMap.entrySet().forEach(entry -> {
                 final String qualifier = entry.getKey();
                 final byte[] value = entry.getValue();
@@ -97,7 +98,7 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
             return put;
         }
         else if(Arrays.equals(rawOperation, DELETE_OPERATION)){
-            final Delete delete = new Delete(rowkey);
+            final Delete delete = new Delete(rowkey.getBytes());
             logger.debug("Found a Delete on key: " + new String(rowkey) );
             return delete;
         }
@@ -106,6 +107,7 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
 
     /**
      * A kafka topic is a 1:1 mapping to a HBase table.
+     *
      * @param table
      * @return
      */
@@ -118,6 +120,7 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
     /**
      * Returns the delimiter for a table. If nothing is configured in properties,
      * we use the default {@link HBaseSinkConfig#DEFAULT_HBASE_ROWKEY_DELIMITER}
+     *
      * @param table hbase table.
      * @return
      */
@@ -130,6 +133,7 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
     /**
      * Returns the column family mapped in configuration for the table.  If not present, we use the
      * default {@link HBaseSinkConfig#DEFAULT_HBASE_COLUMN_FAMILY}
+     *
      * @param table hbase table.
      * @return
      */
@@ -140,28 +144,34 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
     }
 
     /**
-     *
      * @param valuesMap
      * @param columns
      * @return
      */
-    private byte[] toRowKey(final Map<String, byte[]> valuesMap, final String[] columns, final String delimiter) {
+    private String toRowKey(String table, final Map<String, byte[]> valuesMap, final String[] columns, final String delimiter) {
         Preconditions.checkNotNull(valuesMap);
         Preconditions.checkNotNull(delimiter);
 
-        byte[] rowkey = null;
-        byte[] delimiterBytes = Bytes.toBytes(delimiter);
-        for(String column : columns) {
-            byte[] columnValue = valuesMap.get(column);
-            if(rowkey == null) {
-                rowkey = columnValue;
-            } else {
-                if (null == columnValue) {
-                    columnValue = new byte[] {'N','A'};
-                }
-                rowkey = Bytes.add(rowkey, delimiterBytes, columnValue);
+        HBaseRowkeyGenerator rowkeyGenerator = null;
+        try {
+            rowkeyGenerator = sinkConfig.getRowkeyGenerator(table);
+        } catch (ClassNotFoundException e) {
+            logger.error("RowkeyGenerator init filed", e.fillInStackTrace());
+        } catch (IllegalAccessException e) {
+            logger.error("RowkeyGenerator init filed", e.fillInStackTrace());
+        } catch (InstantiationException e) {
+            logger.error("RowkeyGenerator init filed", e.fillInStackTrace());
+        }
+
+        StringBuilder rowkey = new StringBuilder();
+        for (int i = 0; i < columns.length; i++) {
+            byte[] columnValue = valuesMap.get(columns[i]);
+            rowkey.append(new String(columnValue));
+            if (i != columns.length - 1) {
+                rowkey.append(delimiter);
             }
         }
-        return rowkey;
+
+        return rowkeyGenerator.execute(rowkey.toString());
     }
 }
