@@ -166,7 +166,8 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
         StringBuilder rowkey = new StringBuilder();
         for (int i = 0; i < columns.length; i++) {
             byte[] columnValue = valuesMap.get(columns[i]);
-            rowkey.append(new String(columnValue));
+            String val = Bytes.toString(columnValue);
+            rowkey.append(val);
             if (i != columns.length - 1) {
                 rowkey.append(delimiter);
             }
