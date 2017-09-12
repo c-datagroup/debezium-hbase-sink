@@ -54,6 +54,7 @@ public class HBaseSinkTask extends SinkTask {
     private static Logger logger = LoggerFactory.getLogger(HBaseSinkTask.class);
     private ToPutFunction toPutFunction;
     private HBaseClient hBaseClient;
+    private HBaseSinkConfig sinkConfig;
 
     @Override
     public String version() {
@@ -62,7 +63,7 @@ public class HBaseSinkTask extends SinkTask {
 
     @Override
     public void start(Map<String, String> props)  {
-        final HBaseSinkConfig sinkConfig = new HBaseSinkConfig(props);
+        sinkConfig = new HBaseSinkConfig(props);
         sinkConfig.validate(); // we need to do some sanity checks of the properties we configure.
 
         final String zookeeperQuorum = sinkConfig.getString(HBaseSinkConfig.ZOOKEEPER_QUORUM_CONFIG);
@@ -88,7 +89,8 @@ public class HBaseSinkTask extends SinkTask {
 
         byTable.entrySet().parallelStream().filter(e -> !e.getValue().isEmpty())
                 .forEach(entry -> {
-                    hBaseClient.write(entry.getKey(), entry.getValue());
+                    String hbaseTable = sinkConfig.getHBaseTableName(entry.getKey());
+                    hBaseClient.write(hbaseTable, entry.getValue());
                 });
     }
 
@@ -102,7 +104,8 @@ public class HBaseSinkTask extends SinkTask {
 
             for (String topic : topics) {
                 String columnFamily = this.toPutFunction.columnFamily(topic);
-                TableName tableName = TableName.valueOf(topic);
+                String hbaseTable = sinkConfig.getHBaseTableName(topic);
+                TableName tableName = TableName.valueOf(hbaseTable);
                 HTableDescriptor hTableDescriptor = new HTableDescriptor(tableName);
                 hTableDescriptor.addFamily(new HColumnDescriptor(columnFamily));
 

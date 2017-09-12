@@ -47,6 +47,7 @@ public class HBaseSinkConfig extends AbstractConfig {
     public static final String TABLE_ROWKEY_COLUMNS_TEMPLATE = "hbase.%s.rowkey.columns";
     public static final String TABLE_ROWKEY_DELIMITER_TEMPLATE = "hbase.%s.rowkey.delimiter";
     public static final String TABLE_COLUMN_FAMILY_TEMPLATE = "hbase.%s.family";
+    public static final String HBASE_TABLE_NAME_TEMPLATE = "hbase.%s.tablename";
     public static final String HBASE_ROWKEY_GENERATOR = "hbase.%s.rowkey.generator";
     public static final String DEFAULT_HBASE_ROWKEY_GENERATOR = "net.csdn.hbase.impl.SequenceHBaseRowkeyGenerator";
 
@@ -143,4 +144,16 @@ public class HBaseSinkConfig extends AbstractConfig {
         Preconditions.checkNotNull(propertyName);
         return this.properties.get(propertyName);
     }
+
+    /**
+     *
+     * @param topic
+     * @return
+     */
+    public String getHBaseTableName(String topic) {
+        Preconditions.checkNotNull(topic);
+        String prop_key = String.format(HBaseSinkConfig.HBASE_TABLE_NAME_TEMPLATE, topic);
+        return this.properties.getOrDefault(prop_key, topic);
+    }
+
 }
