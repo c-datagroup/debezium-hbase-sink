@@ -46,19 +46,41 @@ public class TestToPutFunction {
 
         final Schema schema = SchemaBuilder.struct().name("record").version(1)
           .field("url", Schema.STRING_SCHEMA)
-          .field("id", Schema.INT32_SCHEMA)
+          .field("Id", Schema.INT32_SCHEMA)
           .field("zipcode", Schema.INT32_SCHEMA)
+          .field("op", Schema.STRING_SCHEMA)
           .field("status", Schema.BOOLEAN_SCHEMA)
           .build();
 
         final Struct record = new Struct(schema)
           .put("url", "google.com")
-          .put("id", 123456)
+          .put("Id", 123456)
           .put("zipcode", 95051)
+          .put("op", "u")
           .put("status", true);
 
         final SinkRecord sinkRecord = new SinkRecord("test", 0, null, null, schema, record, 0);
         final Put put =  (Put)toPutFunction.apply(sinkRecord);
         Assert.assertEquals(123456, Bytes.toInt(put.getRow()));
+    }
+
+    @Test
+    public void testLongToBytes(){
+        Integer value = 1050;
+        System.out.println(value.toString());
+
+        byte[] bytes = Bytes.toBytes(value.toString());
+
+
+        System.out.println(Bytes.toString(bytes));
+
+        bytes = Bytes.toBytes(((Integer) value).toString());
+
+        System.out.println(Bytes.toString(bytes));
+    }
+
+    public static void main(String[] args) {
+        TestToPutFunction testFunction = new TestToPutFunction();
+        testFunction.testRowkey();
     }
 }

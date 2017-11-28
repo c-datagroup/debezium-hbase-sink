@@ -85,7 +85,15 @@ public class ToPutFunction implements Function<SinkRecord, Mutation> {
 
         valuesMap.putAll(keysMap);
         final String[] rowkeyColumns = rowkeyColumns(table);
-        final String rowkey = toRowKey(table, valuesMap, rowkeyColumns, delimiter);
+
+        String rowkey = null;
+        try{
+            rowkey = toRowKey(table, valuesMap, rowkeyColumns, delimiter);
+        }catch (Exception e){
+            logger.error(table + " HBaseRowkeyGenerator ERROR",e.getMessage());
+            return  null;
+        }
+
 
         if(Arrays.equals(rawOperation, UPDATE_OPERATION) || Arrays.equals(rawOperation, CREATE_OPERATION)) {
             final Put put = new Put(rowkey.getBytes());
